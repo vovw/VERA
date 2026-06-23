@@ -197,7 +197,8 @@ Then point the server/notebook at the downloaded paths (`--algo-config`, `VERA_P
 
 **OMNI training data (Wave 2):** the cross-embodiment OMNI WAN planner is trained on a weighted mixture of
 **Allegro-Sim + Allegro-Real + MimicGen + DROID** (each kept at native fps/aspect, black-padded to a
-576-wide multiview canvas). **PushT is *not* in the OMNI mixture** — it uses its own DFoT flow planner.
+576-wide multiview canvas). **PushT is *not yet* in the OMNI mixture** — for now it uses its own DFoT flow
+planner, and we will release a **new OMNI checkpoint that includes PushT soon**.
 
 ---
 
