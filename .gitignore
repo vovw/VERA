@@ -38,3 +38,7 @@ _sweep_out/
 _sweep_mimicgen.sh
 outputs/
 slurm_logs/
+
+# Session additions: large downloads & vendored external repos (never commit)
+vera-ckpts/
+third_party/

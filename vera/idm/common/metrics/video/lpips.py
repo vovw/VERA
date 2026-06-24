@@ -4,8 +4,11 @@ from torch import Tensor
 from torchmetrics import Metric
 from torchmetrics.image.lpip import (
     LearnedPerceptualImagePatchSimilarity as _LearnedPerceptualImagePatchSimilarity,
-    _valid_img,
 )
+try:
+    from torchmetrics.image.lpip import _valid_img
+except ImportError:  # torchmetrics >=1.4 moved this to functional
+    from torchmetrics.functional.image.lpips import _valid_img
 from torchmetrics.utilities.imports import _LPIPS_AVAILABLE
 from .shared_registry import SharedVideoMetricModelRegistry
 from .types import VideoMetricModelType

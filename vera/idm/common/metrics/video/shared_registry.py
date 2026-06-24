@@ -2,7 +2,10 @@ from typing import Dict, List
 
 from torch import Tensor, nn
 from torchmetrics.image.fid import NoTrainInceptionV3
-from torchmetrics.image.lpip import NoTrainLpips
+try:
+    from torchmetrics.image.lpip import NoTrainLpips
+except ImportError:  # torchmetrics >=1.9 made this private
+    from torchmetrics.image.lpip import _NoTrainLpips as NoTrainLpips
 
 from vera.utils.print_utils import suppress_warnings
 from vera.utils.torch_utils import freeze_model

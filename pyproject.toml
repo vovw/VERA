@@ -33,7 +33,11 @@ dependencies = [
     "pillow",         # PIL — datasets/server/utils/env_runner image handling
     "requests",       # http downloads (idm + video_model)
     "roma",           # rotation math (utils)
-    "torchmetrics",   # metrics (utils + idm)
+    # torchmetrics>=1.9 dropped/renamed symbols the IDM metrics import (NoTrainLpips, _valid_img);
+    # FID also needs torch-fidelity to be importable. Pin to a compatible line.
+    "torchmetrics==1.4.0.post0",  # metrics (utils + idm)
+    "torch-fidelity",             # required for torchmetrics FID export to import
+    "setuptools<81",              # DFoT imports pkg_resources, removed in setuptools>=81
     "wandb-osh",      # offline wandb sync hook (utils + video_model)
     "plotly",         # diagnostic plotting (utils)
     "easydict",       # attr-dict configs (idm + video_model)
@@ -59,6 +63,7 @@ video = [
     "pandas",
     "scikit-learn",
     "regex",                  # WAN tokenizer / text processing (video_model)
+    "pyzmq",                  # WAN serving stack imports zmq (start_server teacache path)
 ]
 # Jacobian IDM side — from okto requirements.
 idm = [
@@ -85,9 +90,10 @@ idm = [
 eval = [
     "gymnasium==0.29.1",
     "gym-pusht==0.1.5",
-    "robomimic==0.5.0",
+    # robomimic 0.5.0 / mimicgen 1.0.0 are GitHub-only releases (not published to PyPI).
+    "robomimic @ git+https://github.com/ARISE-Initiative/robomimic.git",
     "robosuite==1.4.1",
-    "mimicgen==1.0.0",
+    "mimicgen @ git+https://github.com/NVlabs/mimicgen.git",
     "mujoco==3.5.0",
     "imageio",
 ]

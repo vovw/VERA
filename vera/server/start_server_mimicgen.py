@@ -47,6 +47,15 @@ DYNAMICS_ENTITY = os.environ.get("VERA_DYNAMICS_ENTITY", "your-wandb-entity")
 DYNAMICS_PROJECT = os.environ.get("VERA_DYNAMICS_PROJECT", "jacobian-learning")
 DEFAULT_DYNAMICS_RUN_ID = os.environ.get("VERA_DYNAMICS_RUN_ID", "x21o0cwe")
 
+# Wave-1 ships the MimicGen IDM as a LOCAL checkpoint (idm-mimicgen-37oa162u) so no wandb
+# access is needed. If this file exists we load it via DynamicsCfg.ckpt_path (config.yaml
+# sidecar next to it); otherwise we fall back to the wandb run resolution above.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DYNAMICS_CKPT = os.environ.get(
+    "VERA_MIMICGEN_DYNAMICS_CKPT",
+    str(_REPO_ROOT / "vera-ckpts" / "idm-mimicgen-37oa162u" / "model.ckpt"),
+)
+
 # ── mimicgen dualview ──
 MIMICGEN_VIEW_KEYS = ["agentview_image", "robot0_eye_in_hand_image"]
 DIFFUSION_SAMPLING_TIMESTEPS = 40
@@ -130,12 +139,18 @@ def build_policy(
         alltracker_rate=2, alltracker_query_frame=0,
         alltracker_inference_iters=4, alltracker_conf_thr=0.6, alltracker_bkg_opacity=0.0,
     )
-    dynamics_cfg = DynamicsCfg(
-        ckpt=ModelCheckpoint(
-            entity=DYNAMICS_ENTITY, project=DYNAMICS_PROJECT,
-            run_id=dynamics_run_id, option="latest", force_redownload=False,
-        ),
-    )
+    # Prefer the local Wave-1 IDM checkpoint (no wandb); fall back to wandb run resolution.
+    if Path(DEFAULT_DYNAMICS_CKPT).exists():
+        logging.info("MIMICGEN IDM: local ckpt %s", DEFAULT_DYNAMICS_CKPT)
+        dynamics_cfg = DynamicsCfg(ckpt_path=DEFAULT_DYNAMICS_CKPT)
+    else:
+        logging.info("MIMICGEN IDM: wandb run %s/%s/%s", DYNAMICS_ENTITY, DYNAMICS_PROJECT, dynamics_run_id)
+        dynamics_cfg = DynamicsCfg(
+            ckpt=ModelCheckpoint(
+                entity=DYNAMICS_ENTITY, project=DYNAMICS_PROJECT,
+                run_id=dynamics_run_id, option="latest", force_redownload=False,
+            ),
+        )
     controller_cfg = ControllerCfg(
         lam=0.0, clip_du=10000.0, action_scale=1.0, smoothing=0.0, weight_flow_thresh=0.0,
     )
