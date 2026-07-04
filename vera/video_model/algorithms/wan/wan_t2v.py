@@ -854,9 +854,18 @@ class WanTextToVideo(BasePytorchAlgo):
         if should_step0_vis or should_periodic_vis:
             torch.cuda.empty_cache()
             self.eval()
-            with torch.no_grad():
-                self._training_vis(video_lat, prompt_embeds, batch)
-            self.train()
+            try:
+                with torch.no_grad():
+                    self._training_vis(video_lat, prompt_embeds, batch)
+            except Exception:
+                # A vis/logging failure must never kill training: this runs on
+                # rank 0 only, so an exception here desyncs the ranks and the
+                # others hang in allreduce until the NCCL watchdog SIGABRTs the
+                # whole job (e.g. wandb.Video -> moviepy raising on a missing
+                # video-encoder dependency).
+                logging.exception("[wan] _training_vis failed; skipping this vis")
+            finally:
+                self.train()
             gc.collect()
             torch.cuda.empty_cache()
 
@@ -1145,10 +1154,14 @@ class WanTextToVideo(BasePytorchAlgo):
             sync_dist=True,
         )
 
-        # Training-style visualization (one denoising pass, no AR)
-        self._training_vis(
-            video_lat, prompt_embeds, batch, prefix_root="validation_vis"
-        )
+        # Training-style visualization (one denoising pass, no AR). Must honor the
+        # val-vis gate (the docstring above always promised this): an ungated call
+        # runs the wandb.Video/moviepy encode on EVERY validation pass, bypassing
+        # logging.val_vis_freq.
+        if self._should_run_validation_vis(batch_idx):
+            self._training_vis(
+                video_lat, prompt_embeds, batch, prefix_root="validation_vis"
+            )
 
         if not self._should_run_validation_vis(batch_idx):
             return
@@ -1416,6 +1429,9 @@ class WanTextToVideo(BasePytorchAlgo):
             caption: single caption for all videos (ignored if captions is set)
             captions: {key: caption} per-video captions
         """
+        # A None fps (e.g. an algo config without logging.fps) reaches moviepy as
+        # ffmpeg '-r %.02f' % None -> TypeError that kills the rank.
+        fps = fps if fps else 4
         import wandb as wb
 
         if (

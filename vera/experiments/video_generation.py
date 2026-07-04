@@ -109,8 +109,31 @@ def _patch_tuned_state_dict_prefix() -> None:
     WanTextToVideo._vera_prefix_robust_loader = True
 
 
+def _force_flash_attn2() -> None:
+    """Disable the FlashAttention-3 dispatch for TRAINING runs.
+
+    The WAN attention wrapper prefers FA3 (``flash_attn_interface``) whenever it
+    imports. The ``flash-attn 3.0.0b1`` beta fails on H200 (sm_90) nodes at the
+    first forward: every ``cuTensorMapEncodeTiled`` call errors with "Failed to
+    initialize the TMA descriptor 999", poisoning the CUDA context so all
+    subsequent kernels raise "CUDA error: invalid device function". FA2 is the
+    battle-tested path, so flip the module-level availability flag that
+    ``flash_attention`` checks at call time. Training-only shim — the vendored
+    WAN module and the inference servers are untouched. Set ``VERA_ENABLE_FA3=1``
+    to opt back in (e.g. after a flash-attn or driver upgrade).
+    """
+    import os
+
+    if os.environ.get("VERA_ENABLE_FA3"):
+        return
+    from vera.video_model.algorithms.wan.modules import attention as wan_attention
+
+    wan_attention.FLASH_ATTN_3_AVAILABLE = False
+
+
 _register_wan_algorithms()
 _patch_tuned_state_dict_prefix()
+_force_flash_attn2()
 
 
 class VideoMixtureDataModule(BaseDataModule):
@@ -170,11 +193,13 @@ class VideoGenerationExperiment(BaseLightningExperiment):
     compatible_algorithms: Set[str] = {"wan_t2v", "wan_i2v"}
     compatible_datasets: Set[str] = {
         "combined_4env",
+        "combined_5env",
         "mimicgen",
         "allegro_sim",
         "allegro_real",
         "droid_flow",
         "droid",
+        "pusht",
     }
 
     data_module_cls = VideoMixtureDataModule
@@ -204,6 +229,8 @@ class VideoGenerationExperiment(BaseLightningExperiment):
             return super()._build_strategy()
 
         if strategy == "fsdp":
+            from datetime import timedelta
+
             from lightning.pytorch.strategies.fsdp import FSDPStrategy
             from torch.distributed.fsdp import BackwardPrefetch, MixedPrecision
             from torch.distributed.fsdp.wrap import ModuleWrapPolicy
@@ -225,6 +252,11 @@ class VideoGenerationExperiment(BaseLightningExperiment):
                 sharding_strategy="HYBRID_SHARD",
                 device_mesh=device_mesh,
                 backward_prefetch=BackwardPrefetch.BACKWARD_POST,
+                # torch's default process-group timeout is 600 s; rank-skewed
+                # phases (rank-0 wandb video encode, ~176 GB sharded ckpt saves
+                # to NFS, val AR rollouts) can exceed it — the NCCL watchdog then
+                # SIGABRTs every rank. The NCCL_* env vars do NOT reach this knob.
+                timeout=timedelta(hours=2),
             )
 
         return strategy
