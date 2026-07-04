@@ -3,7 +3,9 @@
 <p align="center">
   Sizhe Lester Li<sup>*</sup>,
   Evan Kim<sup>*</sup>,
-  Xingjian Bai<sup>*</sup>,
+  Xingjian Bai<sup>*</sup>
+</p>
+<p align="center">
   Tong Zhao,
   Tao Pang,
   Max Simchowitz,
@@ -197,13 +199,16 @@ Then point the server/notebook at the downloaded paths (`--algo-config`, `VERA_P
 **OMNI training data (Wave 2):** the cross-embodiment OMNI WAN planner is trained on a weighted mixture of
 **Allegro-Sim + Allegro-Real + MimicGen + DROID** (each kept at native fps/aspect, black-padded to a
 576-wide multiview canvas). **PushT is *not yet* in the OMNI mixture** — for now it uses its own DFoT flow
-planner, and we will release a **new OMNI checkpoint that includes PushT soon**.
+planner, and we will release a **new OMNI checkpoint that includes PushT soon**. The training config for
+that 5-environment mixture already ships in this repo
+(`vera/configurations/config_wan_combined_5env.yaml`).
 
 ---
 
 ## Training
 
-_To be added._
+Both stages train through one Hydra entry point, `python -m vera.main` — see **[TRAINING.md](TRAINING.md)**
+for the full guide (data format, IDM training, WAN / OMNI video-planner finetuning, multi-GPU/FSDP).
 
 ---
 

@@ -12,8 +12,8 @@ Decoupling them is the point: the planner never sees actions, and each IDM can b
 touching the planner. Both train through one Hydra entry point, `python -m vera.main`, and the data path
 is **fully self-contained** (no external sibling-repo imports).
 
-> **Wave 1** (this release) ships training configs for **MimicGen** and **PushT**. The Allegro / IIWA /
-> DROID configs land with **Wave 2** (later this week).
+> This release documents training for **MimicGen** and **PushT**; the Allegro / IIWA / DROID configs are
+> in-tree but ship no hosted checkpoints or packed datasets yet (they land with **Wave 2**).
 
 ## Setup
 
@@ -55,8 +55,9 @@ python -m vera.main --config-name=config_wan_combined_4env experiment.strategy=f
 The cross-embodiment **OMNI** planner trains on the **`combined_4env`** mixture — **Allegro-Sim +
 Allegro-Real + MimicGen + DROID** — episode-balanced, each kept at native fps/aspect and black-padded to a
 common **576-wide** multiview canvas. The video dataset yields the WAN contract
-`videos [T,3,128,576] ∈ [-1,1]` + `prompts` (live UMT5 encode). (PushT instead uses a small **DFoT** flow
-predictor, not WAN.)
+`videos [T,3,128,576] ∈ [-1,1]` + `prompts` (live UMT5 encode). (PushT ships with a small **DFoT** flow
+predictor; the **`combined_5env`** mixture — `config_wan_combined_5env.yaml` — adds PushT as a fifth WAN
+subset for the upcoming OMNI+PushT checkpoint.)
 
 ## Serving (inference)
 
