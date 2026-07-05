@@ -41,7 +41,7 @@ translate that dream into actions:
 
 | Wave | Embodiments | Code | Checkpoints | Status |
 |------|-------------|:----:|:-----------:|:------:|
-| **Wave 1 — now** | **MimicGen** (Panda, 2-block stacking) · **PushT** (planar pusher) | ✅ | ✅ | **available** |
+| **Wave 1 — now** | **MimicGen** (Panda, 2-block stacking) · **PushT** (planar pusher) | ✅ | ✅ | **early version available** (working on bug fixes from merging the two repos) |
 | **Wave 2 — later this week** | Allegro-Sim · Allegro-Real · IIWA-Sim · DROID (FR3 real) | ✅ in-tree | 🔜 | code present; checkpoints + docs coming |
 
 This repo already contains the unified code for **all** embodiments, but Wave 1 documents and ships
