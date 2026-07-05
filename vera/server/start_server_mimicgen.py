@@ -50,7 +50,7 @@ DEFAULT_DYNAMICS_RUN_ID = os.environ.get("VERA_DYNAMICS_RUN_ID", "x21o0cwe")
 # ── mimicgen dualview ──
 MIMICGEN_VIEW_KEYS = ["agentview_image", "robot0_eye_in_hand_image"]
 DIFFUSION_SAMPLING_TIMESTEPS = 40
-MOTION_PLAN_SCALE = 1.0   # old-best (run_mimicgen_eval.sh); 3.0 overshoots, 2.0 retreats. Verified 2026-06-10.
+MOTION_PLAN_SCALE = 1.0
 
 
 def _patch_wan_tuned_state_dict_prefix() -> None:
@@ -81,7 +81,7 @@ def build_policy(
     sample_steps_override: int | None = None,
     lang_guidance_override: float | None = None,
     hist_guidance_override: float | None = None,
-    tracker_backend: str = "cotracker",   # old-best; alltracker produces wrong-direction flow on mimicgen (arm flees blocks). Verified 2026-06-10.
+    tracker_backend: str = "cotracker",   # alltracker produces wrong-direction flow on mimicgen (arm flees blocks)
     control_view_keys: list[str] | None = None,
     **_ignored,
 ) -> MotionPolicyGripper:
@@ -89,10 +89,10 @@ def build_policy(
     flow_planner_data_root = flow_planner_data_root or str(DEFAULT_FLOW_PLANNER_DATA_ROOT)
     view_keys = list(control_view_keys) if control_view_keys else MIMICGEN_VIEW_KEYS
 
-    # --- overnight sweep overrides (env): match old-best mimicgen params without CLI plumbing ---
-    #  VERA_TRACKER_BACKEND   (default alltracker; old-best = cotracker)
-    #  VERA_MOTION_PLAN_SCALE (default 3.0;        old-best = 1.0)
-    #  VERA_N_ACTION_STEPS    (default 10;         old-best exec_horizon = 6)
+    # --- env overrides for the mimicgen control params (no CLI plumbing) ---
+    #  VERA_TRACKER_BACKEND   (default alltracker; recipe below uses cotracker)
+    #  VERA_MOTION_PLAN_SCALE (default 3.0;        recipe below uses 1.0)
+    #  VERA_N_ACTION_STEPS    (default 10;         recipe below uses exec_horizon = 6)
     tracker_backend = os.environ.get("VERA_TRACKER_BACKEND", tracker_backend)
     motion_plan_scale = float(os.environ.get("VERA_MOTION_PLAN_SCALE", MOTION_PLAN_SCALE))
     n_action_steps = int(os.environ.get("VERA_N_ACTION_STEPS", "10"))
@@ -116,7 +116,7 @@ def build_policy(
         n_latent, m_latent, stride, context_pixel_frames, future_pixel_frames,
         eff_steps, view_keys, dynamics_run_id,
     )
-    logging.info("MIMICGEN sweep overrides: motion_plan_scale=%.2f n_action_steps=%d tracker=%s",
+    logging.info("MIMICGEN control params: motion_plan_scale=%.2f n_action_steps=%d tracker=%s",
                  motion_plan_scale, n_action_steps, tracker_backend)
 
     planner_cfg = PlannerCfg(
@@ -152,12 +152,6 @@ def build_policy(
         context_frames=context_pixel_frames,
         control_view_keys=view_keys,
         debug_dump_model_name="omni_combined_4env_step9000",
-        # ── PROVEN stack_d0 recipe (okto eval 2026-04-21: 25/30 = 83%, top5 47/50 = 94%) ──
-        # The full recipe = mimicgen-specialist WAN (mimicgen_dualview_all_in_one) + IDM
-        # 37oa162u + cotracker + this gated gripper + the adaptive state_delta_grouped
-        # controller below + exec=6. Verbatim from the winning run's policy_cfg.
-        # Supersedes the 2026-06-11 June overrides (focus_gain=-1, close=1.0, exec=10),
-        # which diverged from this and regressed mimicgen SR toward ~0.
         gripper_command_mode="gated",
         gripper_thresh=0.18,
         gripper_close_thresh=0.18,

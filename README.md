@@ -69,7 +69,7 @@ pip install -e ".[eval]"                 # gymnasium, gym-pusht, robomimic, robo
 ```
 
 - **PushT** runs on `gym-pusht` (pulls `pymunk`), but the notebook seeds rollouts from the **original
-  PushT replay buffer** `pusht_cchi_v7_replay.zarr` (the known-success initial states it indexes into).
+  PushT replay buffer** `pusht_cchi_v7_replay.zarr` (the initial states it indexes into).
   Grab it from the [Diffusion Policy](https://github.com/real-stanford/diffusion_policy) release:
   ```bash
   wget https://diffusion-policy.cs.columbia.edu/data/training/pusht.zip
@@ -125,7 +125,8 @@ python -m vera.server.start_vera_server --embodiment pusht --port 8820 --vis-por
 ```
 **2. Run the client:** open **`examples/pusht_dfot_stack.ipynb`** → **Run All**.
 
-- it connects to the server, rolls out a known-success initial state, prints the success rate, and inlines
+- it connects to the server, rolls out the walkthrough's default start state (a single episode — set
+  `FRAME_INDICES = None` in the notebook for a population success rate), prints the result, and inlines
   the rollout + the composite policy-vis;
 - checkpoint paths come from the `VERA_PUSHT_*` env vars (see `vera/server/start_server_pusht.py`).
 
