@@ -44,7 +44,7 @@ _Last updated: **Jul 6, 2026**._
 | Wave | Embodiments | Code | Checkpoints | Status |
 |------|-------------|:----:|:-----------:|:------:|
 | **Wave 1** — released Jun 23, 2026 | **MimicGen** (Panda, 2-block stacking) · **PushT** (planar pusher) | ✅ | ✅ | **ready** |
-| **Wave 2** — ETA ~Jul 11, 2026 | Allegro-Sim · Allegro-Real · IIWA-Sim · DROID (FR3 real) | ✅ in-tree | 🔜 | code present; checkpoints + docs coming |
+| **Wave 2** — ETA ~Jul 11, 2026 | Allegro-Sim · Allegro-Real · IIWA-Sim · DROID (FR3 real) | ✅ | 🔜 | code present; checkpoints + docs coming |
 
 This repo already contains the unified code for **all** embodiments, but Wave 1 documents and ships
 checkpoints only for **MimicGen + PushT**. The cross-embodiment **OMNI** WAN planner and the DROID/Allegro
