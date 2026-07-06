@@ -199,7 +199,7 @@ hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts \
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts
 ```
 
-The Wave-1 download is **~3.8 GB**; the full repo is **~42 GB** (the 33 GB OMNI WAN planner dominates).
+The Wave-1 download is **~15 GB (11.3 GB of it the VGGT-based MimicGen IDM)**; the full repo is **~42 GB** (the 33 GB OMNI WAN planner dominates).
 Then point the server/notebook at the downloaded paths (`--algo-config`, `VERA_PUSHT_*` / `VERA_WAN_CKPT_ROOT`).
 
 **OMNI training data (Wave 2):** the cross-embodiment OMNI WAN planner is trained on a weighted mixture of
