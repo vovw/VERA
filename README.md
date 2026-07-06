@@ -105,11 +105,11 @@ Every embodiment runs the **same two steps**: start a policy server in one termi
 notebook in another. The notebook drives the sim, prints the success rate, and inlines the rollout videos.
 
 ```
-  Terminal 1 — server                          Jupyter — client notebook
-  ┌─────────────────────────────┐   websocket  ┌──────────────────────────────┐
-  │ python -m vera.server        │ ───────────▶ │  open the notebook → Run All │
-  │   .start_vera_server ...      │  :8800/:8820 │  → success rate + videos     │
-  └─────────────────────────────┘              └──────────────────────────────┘
+  Terminal 1 — server                         Jupyter — client notebook
+  ┌──────────────────────────────┐              ┌──────────────────────────────┐
+  │ python -m vera.server        │ ───────────▶ │ open the notebook → Run All  │
+  │   .start_vera_server ...     │  :8800/:8820 │ → success rate + videos      │
+  └──────────────────────────────┘              └──────────────────────────────┘
 ```
 
 | Task | Server flag | **Client notebook (run this)** |
