@@ -27,13 +27,8 @@ policy. It leaves a video generative model **as-is** as an action-free world mod
 and trains an embodiment-specific **inverse-dynamics model (IDM)** — built on the robot's **Jacobian** — to
 translate that dream into actions:
 
-1. **Video planner** (`vera.video_model` / `vera.idm.dfot`) — an action-free diffusion model that generates
-   future frames from the current observation (+ optional text). **Embodiment-agnostic.**
-2. **Jacobian IDM** (`vera.idm` + `vera.policy`) — a faithful, data-efficient translator from dreamed future
-   to robot actions. **Embodiment-specific**, swappable without retraining the planner.
-
-> The thesis: *decoupled video planning + faithful video-to-action translation* is a viable route to
-> zero-shot, cross-embodiment robot control. **One video planner, many IDMs.**
+1. **Video planner** (`vera.video_model` / `vera.idm.dfot`)
+2. **Jacobian IDM** (`vera.idm` + `vera.policy`)
 
 ---
 
@@ -105,11 +100,11 @@ Every embodiment runs the **same two steps**: start a policy server in one termi
 notebook in another. The notebook drives the sim, prints the success rate, and inlines the rollout videos.
 
 ```
-  Terminal 1 — server                          Jupyter — client notebook
-  ┌─────────────────────────────┐   websocket  ┌──────────────────────────────┐
-  │ python -m vera.server        │ ───────────▶ │  open the notebook → Run All │
-  │   .start_vera_server ...      │  :8800/:8820 │  → success rate + videos     │
-  └─────────────────────────────┘              └──────────────────────────────┘
+  Terminal 1 — server                         Jupyter — client notebook
+  ┌──────────────────────────────┐              ┌──────────────────────────────┐
+  │ python -m vera.server        │ ───────────▶ │ open the notebook → Run All  │
+  │   .start_vera_server ...     │  :8800/:8820 │ → success rate + videos      │
+  └──────────────────────────────┘              └──────────────────────────────┘
 ```
 
 | Task | Server flag | **Client notebook (run this)** |
