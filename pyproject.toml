@@ -34,6 +34,10 @@ dependencies = [
     "requests",       # http downloads (idm + video_model)
     "roma",           # rotation math (utils)
     "torchmetrics",   # metrics (utils + idm)
+    "torch-fidelity", # torchmetrics' FID module imports it at module scope
+    "colorama",       # vera.utils.{logging,print_utils} import it at module scope
+    "mediapy",        # video IO — vera.policy.motion_policy_allegro + env_runner import it at module scope
+    "setuptools<81",  # DFoT imports pkg_resources, removed in setuptools>=81
     "wandb-osh",      # offline wandb sync hook (utils + video_model)
     "plotly",         # diagnostic plotting (utils)
     "easydict",       # attr-dict configs (idm + video_model)
@@ -45,7 +49,7 @@ video = [
     "torchvision",
     "pytorch-lightning>=2.5",
     "lightning>=2.5",
-    "transformers>=4.51",
+    "transformers>=4.51,<5",  # v5 breaks the WAN text-encoder loading path
     "diffusers>=0.34",
     "accelerate>=1.1",
     "deepspeed>=0.15",
@@ -59,6 +63,7 @@ video = [
     "pandas",
     "scikit-learn",
     "regex",                  # WAN tokenizer / text processing (video_model)
+    "pyzmq",                  # wan_t2v imports zmq at module scope (teacache serving path)
 ]
 # Jacobian IDM side — from okto requirements.
 idm = [
@@ -68,6 +73,7 @@ idm = [
     "zarr>=3.0",
     "mediapy",
     "moviepy",
+    "proglog",                # moviepy progress logging backend; not always pulled in transitively
     "pytorchvideo",
     "rerun-sdk",
     "tqdm",
@@ -85,6 +91,7 @@ idm = [
 eval = [
     "gymnasium==0.29.1",
     "gym-pusht==0.1.5",
+    "pymunk<7",               # gym-pusht 0.1.5 uses the pymunk 6 API; pymunk 7 renamed/removed it
     "robomimic==0.5.0",
     "robosuite==1.4.1",
     "mimicgen==1.0.0",
@@ -95,6 +102,9 @@ dev = ["pytest"]
 
 [tool.setuptools.packages.find]
 include = ["vera*"]
+
+[tool.setuptools.package-data]
+"vera.env_runner.env_wrappers" = ["*.png"]
 
 [tool.pytest.ini_options]
 markers = [

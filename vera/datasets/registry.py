@@ -46,13 +46,17 @@ except Exception:  # pragma: no cover - registry is optional for the unified pat
 # name -> (Source class, ViewLoader class). The DroidViewLoader decodes any episode's
 # views (it iterates episode.views), so all video-CSV embodiments share it; only the
 # discovery (Source) differs (wide DROID CSV vs long allegro/mimicgen CSV).
-# pusht uses a packed/zarr format (not video-CSV) — add a PushtSource in core/ to enable.
+# pusht has no video-CSV: it is served straight from the packed NPZ root (PackedSource
+# discovers episodes via index.json; PackedViewLoader decodes the JPEG frames). A
+# ``tiled`` layout routes it here to VideoModelDataset; ``separate`` (the IDM default)
+# still takes the packed core path below.
 _SOURCES: Dict[str, Tuple[Type[Source], Type[ViewLoader]]] = {
     "droid": (DroidSource, DroidViewLoader),
     "droid_flow": (DroidSource, DroidViewLoader),
     "allegro_sim": (AllegroSimSource, DroidViewLoader),
     "allegro_real": (AllegroRealSource, DroidViewLoader),
     "mimicgen": (MimicgenSource, DroidViewLoader),
+    "pusht": (PackedSource, PackedViewLoader),
 }
 
 
@@ -365,7 +369,13 @@ def build_dataset(
             data_root, metadata_path=metadata_path, concat_views=concat_views
         )
     except TypeError:
-        source = source_cls(data_root)
+        # PackedSource signature is (data_root, *, name=None, views=None): pass the
+        # cfg name so NATIVE_FPS resolves for the right embodiment (not the
+        # 'robomimic' default) and pin the view order from the cfg.
+        try:
+            source = source_cls(data_root, name=name, views=concat_views)
+        except TypeError:
+            source = source_cls(data_root)
     view_loader = view_loader_cls(height=height, per_view_w=per_view_w)
 
     dataset_cls: Type[UnifiedDataset] = (

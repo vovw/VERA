@@ -3,7 +3,9 @@
 <p align="center">
   Sizhe Lester Li<sup>*</sup>,
   Evan Kim<sup>*</sup>,
-  Xingjian Bai<sup>*</sup>,
+  Xingjian Bai<sup>*</sup>
+</p>
+<p align="center">
   Tong Zhao,
   Tao Pang,
   Max Simchowitz,
@@ -25,26 +27,24 @@ policy. It leaves a video generative model **as-is** as an action-free world mod
 and trains an embodiment-specific **inverse-dynamics model (IDM)** — built on the robot's **Jacobian** — to
 translate that dream into actions:
 
-1. **Video planner** (`vera.video_model` / `vera.idm.dfot`) — an action-free diffusion model that generates
-   future frames from the current observation (+ optional text). **Embodiment-agnostic.**
-2. **Jacobian IDM** (`vera.idm` + `vera.policy`) — a faithful, data-efficient translator from dreamed future
-   to robot actions. **Embodiment-specific**, swappable without retraining the planner.
-
-> The thesis: *decoupled video planning + faithful video-to-action translation* is a viable route to
-> zero-shot, cross-embodiment robot control. **One video planner, many IDMs.**
+1. **Video planner** (`vera.video_model` / `vera.idm.dfot`)
+2. **Jacobian IDM** (`vera.idm` + `vera.policy`)
 
 ---
 
 ## 🗺️ Release roadmap
 
+_Last updated: **Jul 6, 2026**._
+
 | Wave | Embodiments | Code | Checkpoints | Status |
 |------|-------------|:----:|:-----------:|:------:|
-| **Wave 1 — now** | **MimicGen** (Panda, 2-block stacking) · **PushT** (planar pusher) | ✅ | ✅ | **available** |
-| **Wave 2 — later this week** | Allegro-Sim · Allegro-Real · IIWA-Sim · DROID (FR3 real) | ✅ in-tree | 🔜 | code present; checkpoints + docs coming |
+| **Wave 1** — released Jun 23, 2026 | **MimicGen** (Panda, 2-block stacking) · **PushT** (planar pusher) | ✅ | ✅ | **ready** |
+| **Wave 2** — ETA ~Jul 11, 2026 | Allegro-Sim · Allegro-Real · IIWA-Sim · DROID (FR3 real) | ✅ | 🔜 | code present; checkpoints + docs coming |
 
 This repo already contains the unified code for **all** embodiments, but Wave 1 documents and ships
 checkpoints only for **MimicGen + PushT**. The cross-embodiment **OMNI** WAN planner and the DROID/Allegro
-IDMs land with Wave 2.
+IDMs land with Wave 2. We are also working on releasing the **Allegro-hand and IIWA simulators** themselves
+(as of Jul 4, 2026 — the `eval` extra currently covers only the MimicGen + PushT environments).
 
 ---
 
@@ -64,7 +64,7 @@ pip install -e ".[eval]"                 # gymnasium, gym-pusht, robomimic, robo
 ```
 
 - **PushT** runs on `gym-pusht` (pulls `pymunk`), but the notebook seeds rollouts from the **original
-  PushT replay buffer** `pusht_cchi_v7_replay.zarr` (the known-success initial states it indexes into).
+  PushT replay buffer** `pusht_cchi_v7_replay.zarr` (the initial states it indexes into).
   Grab it from the [Diffusion Policy](https://github.com/real-stanford/diffusion_policy) release:
   ```bash
   wget https://diffusion-policy.cs.columbia.edu/data/training/pusht.zip
@@ -100,11 +100,11 @@ Every embodiment runs the **same two steps**: start a policy server in one termi
 notebook in another. The notebook drives the sim, prints the success rate, and inlines the rollout videos.
 
 ```
-  Terminal 1 — server                          Jupyter — client notebook
-  ┌─────────────────────────────┐   websocket  ┌──────────────────────────────┐
-  │ python -m vera.server        │ ───────────▶ │  open the notebook → Run All │
-  │   .start_vera_server ...      │  :8800/:8820 │  → success rate + videos     │
-  └─────────────────────────────┘              └──────────────────────────────┘
+  Terminal 1 — server                         Jupyter — client notebook
+  ┌──────────────────────────────┐              ┌──────────────────────────────┐
+  │ python -m vera.server        │ ───────────▶ │ open the notebook → Run All  │
+  │   .start_vera_server ...     │  :8800/:8820 │ → success rate + videos      │
+  └──────────────────────────────┘              └──────────────────────────────┘
 ```
 
 | Task | Server flag | **Client notebook (run this)** |
@@ -120,7 +120,8 @@ python -m vera.server.start_vera_server --embodiment pusht --port 8820 --vis-por
 ```
 **2. Run the client:** open **`examples/pusht_dfot_stack.ipynb`** → **Run All**.
 
-- it connects to the server, rolls out a known-success initial state, prints the success rate, and inlines
+- it connects to the server, rolls out the walkthrough's default start state (a single episode — set
+  `FRAME_INDICES = None` in the notebook for a population success rate), prints the result, and inlines
   the rollout + the composite policy-vis;
 - checkpoint paths come from the `VERA_PUSHT_*` env vars (see `vera/server/start_server_pusht.py`).
 
@@ -136,9 +137,10 @@ python -m vera.server.start_vera_server --embodiment mimicgen --port 8800 --vis-
 ```
 > Set **both** env vars before launching — the hosted `algo_config.yaml` reads the DiT + flow decoder from
 > `VERA_MIMICGEN_CKPT_DIR` and the Wan2.1 base from `VERA_WAN_CKPT_ROOT`.
+> The Jacobian IDM checkpoint loads locally via `VERA_MIMICGEN_DYNAMICS_CKPT`
+> (default: `./vera-ckpts/idm-mimicgen-285ouq1q/model.ckpt`).
 
-**2. Run the client:** open **`examples/mimicgen_stack.ipynb`** → **Run All** (defaults to a known-good
-`stack_d0` initial state).
+**2. Run the client:** open **`examples/mimicgen_stack.ipynb`** → **Run All**.
 
 - swap pieces live via env vars on the server: `VERA_DYNAMICS_RUN_ID` (IDM checkpoint),
   `VERA_TRACKER_BACKEND`, `VERA_MOTION_PLAN_SCALE`, `VERA_N_ACTION_STEPS`.
@@ -176,7 +178,6 @@ frozen upstream pieces are pulled from their original homes.
 | Group | dir | what |
 |---|---|---|
 | **MimicGen** | `mimicgen-wan-1.3b/` | specialist WAN planner (DiT-only bf16, ~2.8 GB) + `flow_decoder.ckpt` + `algo_config.yaml` |
-| | `idm-mimicgen-37oa162u/` | MimicGen Jacobian IDM (+ config sidecar) |
 | **PushT** | `pusht-dfot/` | DFoT flow planner (~39 MB) + `run_config.yaml` |
 | | `pusht-idm/` | PushT Jacobian IDM (~232 MB) + `config.yaml` |
 | **Upstream** | `Wan-AI/Wan2.1-T2V-1.3B`, `facebook/VGGT-1B` | WAN base + IDM backbone (not re-hosted) |
@@ -184,27 +185,29 @@ frozen upstream pieces are pulled from their original homes.
 **Download** (with the HuggingFace CLI — `pip install huggingface_hub`):
 
 ```bash
-# (1) MimicGen + PushT only — IDM + video planner for the Wave-1 notebooks   (~3.8 GB)
+# (1) MimicGen + PushT only — IDM + video planner for the Wave-1 notebooks   (~15 GB)
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts \
-    --include "mimicgen-wan-1.3b/*" "idm-mimicgen-37oa162u/*" "pusht-dfot/*" "pusht-idm/*"
 
 # (2) everything — also pulls the 33 GB OMNI planner + DROID IDM (Wave 2)      (~42 GB)
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts
 ```
 
-The Wave-1 download is **~3.8 GB**; the full repo is **~42 GB** (the 33 GB OMNI WAN planner dominates).
+The Wave-1 download is **~15 GB (11.3 GB of it the VGGT-based MimicGen IDM)**; the full repo is **~42 GB** (the 33 GB OMNI WAN planner dominates).
 Then point the server/notebook at the downloaded paths (`--algo-config`, `VERA_PUSHT_*` / `VERA_WAN_CKPT_ROOT`).
 
 **OMNI training data (Wave 2):** the cross-embodiment OMNI WAN planner is trained on a weighted mixture of
 **Allegro-Sim + Allegro-Real + MimicGen + DROID** (each kept at native fps/aspect, black-padded to a
 576-wide multiview canvas). **PushT is *not yet* in the OMNI mixture** — for now it uses its own DFoT flow
-planner, and we will release a **new OMNI checkpoint that includes PushT soon**.
+planner, and we will release a **new OMNI checkpoint that includes PushT soon**. The training config for
+that 5-environment mixture already ships in this repo
+(`vera/configurations/config_wan_combined_5env.yaml`).
 
 ---
 
 ## Training
 
-_To be added._
+Both stages train through one Hydra entry point, `python -m vera.main` — see **[TRAINING.md](TRAINING.md)**
+for the full guide (data format, IDM training, WAN / OMNI video-planner finetuning, multi-GPU/FSDP).
 
 ---
 

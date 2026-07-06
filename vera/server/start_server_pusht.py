@@ -1,11 +1,11 @@
 """Build a MotionPolicy for PushT (sim) — DFoT planner + Jacobian IDM, served over the protocol.
 
-This is the SERVER side of the PushT client-server path. It constructs the exact two-stage policy
-the in-process notebook proved (examples/pusht_dfot_stack.ipynb, cells 2-4): a DFoT motion planner
-(run dvxixf6d) + a Jacobian inverse-dynamics model (run j1j59qzz), with the canonical PushT recipe
-(motion_plan_scale=30, action_scale=8, lam=5, chunk/exec=3). Both checkpoints are LOCAL files with
-config sidecars next to them — no wandb / okto access at runtime, no WAN prefix patch (DFoT needs
-none). The policy is the gripperless base ``MotionPolicy`` (single view, 2D position-delta du).
+This is the SERVER side of the PushT client-server path. It constructs the two-stage policy
+served to examples/pusht_dfot_stack.ipynb: a DFoT motion planner + a Jacobian inverse-dynamics
+model, with the PushT parameters (motion_plan_scale=30, action_scale=8, lam=5, chunk/exec=3).
+Both checkpoints are LOCAL files with config sidecars next to them — no wandb access at runtime,
+no WAN prefix patch (DFoT needs none). The policy is the gripperless base ``MotionPolicy``
+(single view, 2D position-delta du).
 
     python -m vera.server.start_vera_server --embodiment pusht --port 8820 --vis-port 8821
 
@@ -30,22 +30,24 @@ from vera.policy.motion_policy_types import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
-# ── checkpoints (env-overridable; defaults are the proven local PushT runs) ──────────
-#   planner = DFoT (dvxixf6d): model.ckpt + run_config.yaml sidecar.
-#   IDM     = Jacobian (j1j59qzz): model.ckpt + config.yaml sidecar.
+# ── checkpoints (env-overridable; defaults match the release checkpoint layout) ──────────
+#   planner = DFoT: model.ckpt + run_config.yaml sidecar.
+#   IDM     = Jacobian: model.ckpt + config.yaml sidecar.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PLANNER_CKPT = os.environ.get(
     "VERA_PUSHT_PLANNER_CKPT",
-    "/path/to/data/jacobian/pusht_run_checkpoints/lester0866/jacobian/dvxixf6d/model.ckpt",
+    str(_REPO_ROOT / "vera-ckpts" / "pusht-dfot" / "model.ckpt"),
 )
 DEFAULT_DYNAMICS_CKPT = os.environ.get(
     "VERA_PUSHT_DYNAMICS_CKPT",
-    "/path/to/data/jacobian/pusht_run_checkpoints/lester0866/jacobian/j1j59qzz/model.ckpt",
+    str(_REPO_ROOT / "vera-ckpts" / "pusht-idm" / "model.ckpt"),
 )
 
-# adapter_factory references mod.DEFAULT_DYNAMICS_RUN_ID for the idm_model handshake label.
+# adapter_factory falls back to mod.DEFAULT_DYNAMICS_RUN_ID for the idm_model handshake label
+# when no local checkpoint resolves.
 DEFAULT_DYNAMICS_RUN_ID = "j1j59qzz"
 
-# ── canonical PushT recipe (verbatim from the in-process notebook) ──────────────────
+# ── PushT parameters ──────────────────
 MOTION_PLAN_SCALE = float(os.environ.get("VERA_PUSHT_MOTION_PLAN_SCALE", "30.0"))
 ACTION_SCALE = float(os.environ.get("VERA_PUSHT_ACTION_SCALE", "8.0"))
 LAM = float(os.environ.get("VERA_PUSHT_LAM", "5.0"))
@@ -67,7 +69,7 @@ def build_policy(
     dynamics_ckpt: str | None = None,
     **_ignored,
 ) -> MotionPolicy:
-    """Construct the proven two-stage PushT policy (DFoT planner + Jacobian IDM).
+    """Construct the two-stage PushT policy (DFoT planner + Jacobian IDM).
 
     ``algo_config_path`` / ``dynamics_run_id`` are accepted for factory-signature parity but the
     PushT path uses LOCAL checkpoints (no wandb run resolution). ``sample_steps`` overrides the

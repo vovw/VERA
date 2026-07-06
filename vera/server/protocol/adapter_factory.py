@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 from vera.server.protocol.server_config import VeraServerConfig
 from vera.server.protocol.vera_policy_adapter import VeraPolicyAdapter
 
-# Repo root (…/third_party/vera) — for provenance stamping.
+# Repo root — for provenance stamping.
 _REPO_DIR = str(Path(__file__).resolve().parents[3])
 
 
@@ -174,11 +174,20 @@ def make_adapter(
         **build_kwargs,
     )
 
+    # Advertise the IDM the module actually resolved: modules that define a local-checkpoint
+    # default (DEFAULT_DYNAMICS_CKPT) load it directly when the file exists, so label the
+    # handshake with that checkpoint's bundle directory name instead of a run id.
+    local_idm_ckpt = getattr(mod, "DEFAULT_DYNAMICS_CKPT", None)
+    if local_idm_ckpt and Path(local_idm_ckpt).exists():
+        idm_label = Path(local_idm_ckpt).resolve().parent.name
+    else:
+        idm_label = str(dynamics_run_id or mod.DEFAULT_DYNAMICS_RUN_ID)
+
     config = _build_server_config(
         policy, spec,
         embodiment=embodiment,
         planner_model=str(algo_config_path or "default-wan"),
-        idm_model=str(dynamics_run_id or mod.DEFAULT_DYNAMICS_RUN_ID),
+        idm_model=idm_label,
         needs_prompt=text is not None,
         run_dir=run_dir,
         action_horizon=action_horizon,
