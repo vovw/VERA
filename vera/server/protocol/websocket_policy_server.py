@@ -68,6 +68,30 @@ class WebsocketPolicyServer:
             except (ValueError, OSError):
                 pass  # not main thread / not supported
 
+    # --- runtime config sync ----------------------------------------------------
+    def _sync_action_horizon(self, applied, requested=None) -> None:
+        # chunk-commit size must move with n_action_steps or the policy and adapter disagree.
+        n = None
+        if isinstance(applied, dict) and applied.get("n_action_steps") is not None:
+            n = int(applied["n_action_steps"])
+        elif requested is not None:
+            n = int(requested)
+        if n is None:
+            return
+        cap = 16
+        if isinstance(applied, dict) and applied.get("action_chunk_horizon"):
+            cap = int(applied["action_chunk_horizon"])
+        n = max(1, min(n, cap))
+        adapter = self._policy
+        if hasattr(adapter, "_default_H"):
+            adapter._default_H = n
+        # keep the handshake metadata in step so future connects see the live value
+        self._config.action_horizon = n
+        cfg = getattr(adapter, "config", None)
+        if cfg is not None and cfg is not self._config:
+            cfg.action_horizon = n
+        logger.info("action_horizon -> %d (follows n_action_steps)", n)
+
     # --- serve ----------------------------------------------------------------
     def serve_forever(self) -> None:
         logger.info(
@@ -121,6 +145,8 @@ class WebsocketPolicyServer:
                         # configure_runtime mutates cfg field-by-field (not transactional),
                         # but we only reach here on a full success, so every key in msg took.
                         self._applied_config.update(msg)
+                        if "n_action_steps" in msg:
+                            self._sync_action_horizon(applied, msg.get("n_action_steps"))
                         await websocket.send(packer.pack({"applied": applied}))
                     except Exception as e:  # noqa: BLE001
                         await websocket.send(f"configure failed: {e!r}")
@@ -147,8 +173,10 @@ class WebsocketPolicyServer:
                             replayed, skipped = [], []
                             for k, v in self._applied_config.items():
                                 try:
-                                    inner.configure_runtime(**{k: v})
+                                    res = inner.configure_runtime(**{k: v})
                                     replayed.append(k)
+                                    if k == "n_action_steps":
+                                        self._sync_action_horizon(res, v)
                                 except Exception as exc:  # noqa: BLE001
                                     skipped.append((k, repr(exc)))
                             logger.info("reload: replayed configure keys %s", replayed)
