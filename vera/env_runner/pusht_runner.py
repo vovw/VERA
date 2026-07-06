@@ -67,19 +67,19 @@ class PushTRunner(BaseRunner):
     # Setup environment
     # -------------------------------------------------------- #
     def setup_env(self) -> None:
-        from gym_pusht.envs.pusht import PushTEnv
+        # Vendored PushT variant (velocity control, textured background, corrected
+        # _set_state) — upstream gym-pusht 0.1.5 does not support these; see
+        # vera/env_runner/env_wrappers/pusht_env.py for the full delta.
+        from vera.env_runner.env_wrappers.pusht_env import VeraPushTEnv
 
         def env_fn():
-            # raw PushTEnv
-            base = PushTEnv(
+            base = VeraPushTEnv(
                 obs_type="state",
                 render_mode="rgb_array",
                 visualization_width=252,
                 visualization_height=252,
                 observation_width=252,
                 observation_height=252,
-                # control_type="position",
-                # render_action=False,
                 control_type="velocity",
                 render_action=False,
             )

@@ -142,6 +142,8 @@ python -m vera.server.start_vera_server --embodiment mimicgen --port 8800 --vis-
 ```
 > Set **both** env vars before launching — the hosted `algo_config.yaml` reads the DiT + flow decoder from
 > `VERA_MIMICGEN_CKPT_DIR` and the Wan2.1 base from `VERA_WAN_CKPT_ROOT`.
+> The Jacobian IDM checkpoint loads locally via `VERA_MIMICGEN_DYNAMICS_CKPT`
+> (default: `./vera-ckpts/idm-mimicgen-285ouq1q/model.ckpt`).
 
 **2. Run the client:** open **`examples/mimicgen_stack.ipynb`** → **Run All**.
 
@@ -191,7 +193,7 @@ frozen upstream pieces are pulled from their original homes.
 ```bash
 # (1) MimicGen + PushT only — IDM + video planner for the Wave-1 notebooks   (~3.8 GB)
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts \
-    --include "mimicgen-wan-1.3b/*" "idm-mimicgen-37oa162u/*" "pusht-dfot/*" "pusht-idm/*"
+    --include "mimicgen-wan-1.3b/*" "idm-mimicgen-285ouq1q/*" "idm-mimicgen-37oa162u/*" "pusht-dfot/*" "pusht-idm/*"
 
 # (2) everything — also pulls the 33 GB OMNI planner + DROID IDM (Wave 2)      (~42 GB)
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts

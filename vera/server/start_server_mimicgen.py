@@ -47,6 +47,16 @@ DYNAMICS_ENTITY = os.environ.get("VERA_DYNAMICS_ENTITY", "your-wandb-entity")
 DYNAMICS_PROJECT = os.environ.get("VERA_DYNAMICS_PROJECT", "jacobian-learning")
 DEFAULT_DYNAMICS_RUN_ID = os.environ.get("VERA_DYNAMICS_RUN_ID", "x21o0cwe")
 
+# Local IDM checkpoint hook: VERA_MIMICGEN_DYNAMICS_CKPT points at a downloaded
+# model.ckpt with a config.yaml sidecar next to it (the HF bundle layout). If the
+# path exists we load it directly and skip wandb resolution entirely — needed on
+# machines without wandb access. Default matches the release checkpoint layout.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DYNAMICS_CKPT = os.environ.get(
+    "VERA_MIMICGEN_DYNAMICS_CKPT",
+    str(_REPO_ROOT / "vera-ckpts" / "idm-mimicgen-285ouq1q" / "model.ckpt"),
+)
+
 # ── mimicgen dualview ──
 MIMICGEN_VIEW_KEYS = ["agentview_image", "robot0_eye_in_hand_image"]
 DIFFUSION_SAMPLING_TIMESTEPS = 40
@@ -90,9 +100,9 @@ def build_policy(
     view_keys = list(control_view_keys) if control_view_keys else MIMICGEN_VIEW_KEYS
 
     # --- env overrides for the mimicgen control params (no CLI plumbing) ---
-    #  VERA_TRACKER_BACKEND   (default alltracker; recipe below uses cotracker)
-    #  VERA_MOTION_PLAN_SCALE (default 3.0;        recipe below uses 1.0)
-    #  VERA_N_ACTION_STEPS    (default 10;         recipe below uses exec_horizon = 6)
+    #  VERA_TRACKER_BACKEND   (overrides the build_policy arg; default cotracker)
+    #  VERA_MOTION_PLAN_SCALE (default 1.0)
+    #  VERA_N_ACTION_STEPS    (default 10; number of committed steps per planned chunk)
     tracker_backend = os.environ.get("VERA_TRACKER_BACKEND", tracker_backend)
     motion_plan_scale = float(os.environ.get("VERA_MOTION_PLAN_SCALE", MOTION_PLAN_SCALE))
     n_action_steps = int(os.environ.get("VERA_N_ACTION_STEPS", "10"))
@@ -130,12 +140,18 @@ def build_policy(
         alltracker_rate=2, alltracker_query_frame=0,
         alltracker_inference_iters=4, alltracker_conf_thr=0.6, alltracker_bkg_opacity=0.0,
     )
-    dynamics_cfg = DynamicsCfg(
-        ckpt=ModelCheckpoint(
-            entity=DYNAMICS_ENTITY, project=DYNAMICS_PROJECT,
-            run_id=dynamics_run_id, option="latest", force_redownload=False,
-        ),
-    )
+    # prefer a local checkpoint (env var / release layout) over wandb resolution
+    if Path(DEFAULT_DYNAMICS_CKPT).exists():
+        logging.info("MIMICGEN IDM: local ckpt %s", DEFAULT_DYNAMICS_CKPT)
+        dynamics_cfg = DynamicsCfg(ckpt_path=DEFAULT_DYNAMICS_CKPT)
+    else:
+        logging.info("MIMICGEN IDM: wandb run %s/%s/%s", DYNAMICS_ENTITY, DYNAMICS_PROJECT, dynamics_run_id)
+        dynamics_cfg = DynamicsCfg(
+            ckpt=ModelCheckpoint(
+                entity=DYNAMICS_ENTITY, project=DYNAMICS_PROJECT,
+                run_id=dynamics_run_id, option="latest", force_redownload=False,
+            ),
+        )
     controller_cfg = ControllerCfg(
         lam=0.0, clip_du=10000.0, action_scale=1.0, smoothing=0.0, weight_flow_thresh=0.0,
     )
@@ -157,7 +173,7 @@ def build_policy(
         gripper_close_thresh=0.18,
         gripper_open_thresh=0.18,
         gripper_deadband_thresh=0.12,
-        gripper_min_hold_steps=6,
+        gripper_min_hold_steps=15,  # longer hold debounces gripper-gate open/close chatter
         gripper_jacobian_focus_gain=-10.0,
         gripper_jacobian_focus_bottom_margin_ratio=0.08984375,
         gripper_realign_on_step0=True,

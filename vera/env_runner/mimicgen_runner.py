@@ -500,6 +500,10 @@ class MimicgenRunner(BaseRunner):
                 "mimicgen.utils.robomimic_utils.create_env not available. "
                 "Add third_party/mimicgen to PYTHONPATH."
             )
+        # dark-wood tabletop: the released mimicgen WAN planner was trained on dark-wood
+        # renders; stock robosuite's white ceramic table is out-of-distribution for it.
+        from vera.env_runner.env_wrappers.mimicgen_table_texture import apply_dark_wood_table
+        apply_dark_wood_table()
         dataset_path = Path(self.cfg.dataset_path).expanduser()
         env_meta = get_env_metadata_from_dataset(str(dataset_path))
         (
@@ -928,8 +932,16 @@ class MimicgenRunner(BaseRunner):
             vis_frame = np.asarray(policy_vis)
             if vis_frame.ndim == 4:
                 vis_frame = vis_frame[0]
-        elif obs_rgb is not None:
-            vis_frame = obs_rgb[0]
+        else:
+            # no policy vis for this step: skip the policy-video frame rather than
+            # padding with the obs frame (that silently produced a duplicate of the
+            # obs video). Warn once per run so missing vis is visible in logs.
+            if not getattr(self, "_warned_no_policy_vis", False):
+                print(
+                    "[MimicgenRunner] policy_vis is None; skipping policy video "
+                    "frame(s) instead of duplicating the obs video."
+                )
+                self._warned_no_policy_vis = True
         if vis_frame is not None:
             if vis_frame.dtype != np.uint8:
                 vis_frame = (vis_frame * 255.0).clip(0, 255).astype(np.uint8)
