@@ -30,11 +30,12 @@ class WebsocketClientPolicy(BasePolicy):
 
     def _connect(self) -> Tuple[Any, Dict[str, Any]]:
         logging.info("connecting to %s ...", self._uri)
-        # websockets>=14 sync client does not accept ping_interval/timeout (they belong to
-        # the asyncio server, set there). Slow forward passes are kept alive by the server's
-        # long ping config + a generous open_timeout here.
+        # websockets>=13 sync connections run their own keepalive thread with 20s/20s
+        # defaults — a WAN forward pass (or GPU queueing) longer than that kills the
+        # connection with "keepalive ping timeout". Mirror the server's long ping config.
         conn = websockets.sync.client.connect(
             self._uri, compression=None, max_size=None, open_timeout=PING_TIMEOUT_SECS,
+            ping_interval=PING_INTERVAL_SECS, ping_timeout=PING_TIMEOUT_SECS,
         )
         return conn, msgpack_numpy.unpackb(conn.recv())
 
