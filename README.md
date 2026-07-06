@@ -191,7 +191,7 @@ frozen upstream pieces are pulled from their original homes.
 **Download** (with the HuggingFace CLI — `pip install huggingface_hub`):
 
 ```bash
-# (1) MimicGen + PushT only — IDM + video planner for the Wave-1 notebooks   (~3.8 GB)
+# (1) MimicGen + PushT only — IDM + video planner for the Wave-1 notebooks   (~15 GB)
 hf download sizhe-lester-li/VERA --local-dir ./vera-ckpts \
     --include "mimicgen-wan-1.3b/*" "idm-mimicgen-285ouq1q/*" "idm-mimicgen-37oa162u/*" "pusht-dfot/*" "pusht-idm/*"
 
